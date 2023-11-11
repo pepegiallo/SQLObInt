@@ -1,0 +1,91 @@
+-- Schema Struktur: Enthält Tabellen zur objektorientierten und hierarchischen Datenstruktur
+CREATE SCHEMA structure;
+
+-- Klasse
+CREATE TABLE structure.class (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    name VARCHAR(64) UNIQUE NOT NULL,
+    parent_id UUID REFERENCES structure.class(id)
+);
+CREATE INDEX class_name ON structure.class(name);
+
+-- Attribut
+CREATE TABLE structure.attribute (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    name VARCHAR(64) UNIQUE NOT NULL,
+    generator TEXT NOT NULL,
+    indexed BOOLEAN NOT NULL
+);
+CREATE INDEX attribute_name ON structure.attribute(name);
+
+-- Attributzuweisung: Zuweisung von Attributen zu Klassen
+CREATE TABLE structure.attribute_assignment (
+    class_id UUID REFERENCES structure.class(id),
+    attribute_id UUID REFERENCES structure.attribute(id),
+    nullable BOOLEAN NOT NULL,
+    "default" VARCHAR(64),
+    PRIMARY KEY (class_id, attribute_id)
+);
+
+-- Assoziation: Verknüpfungen zwischen Objekten, Assoziationen können nur zwischen zwei definierten Objektklassen bestehen
+CREATE TABLE structure.association (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    name VARCHAR(64) UNIQUE NOT NULL,
+    origin_class_id UUID REFERENCES structure.class(id),
+    target_class_id UUID REFERENCES structure.class(id)
+);
+CREATE INDEX association_name ON structure.association(name);
+
+-- Schema Berechtigungen: Enthält Tabellen zur Verwaltung von Benutzern und Berechtigungsgruppen
+CREATE SCHEMA permission;
+
+CREATE TABLE permission.user (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    name VARCHAR(64) UNIQUE NOT NULL,
+    external_id UUID UNIQUE,
+    created TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX user_name ON permission.user(name);
+CREATE INDEX user_external_id ON permission.user(external_id);
+
+CREATE TABLE permission.group (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    name VARCHAR(64) UNIQUE NOT NULL,
+    parent_id UUID REFERENCES permission.group(id)
+);
+CREATE INDEX group_name ON permission.group(name);
+
+CREATE TABLE permission.user_assignment (
+    user_id UUID REFERENCES permission.user(id),
+    group_id UUID REFERENCES permission.group(id),
+    PRIMARY KEY (user_id, group_id)
+);
+
+CREATE TABLE permission.association_assignment (
+    association_id UUID REFERENCES structure.association(id),
+    group_id UUID REFERENCES permission.group(id),
+    PRIMARY KEY (association_id, group_id)
+);
+
+-- Schema Assoziationen: Enthält eine Tabelle für jede definierte Assoziation, in welcher die Verbindungen zwischen Objekten abgelegt sind
+CREATE SCHEMA association;
+
+-- Schema Daten: Enthält eine Tabelle für jede Objektklasse, in welcher die Daten abgelegt werden sowie eine Meta-Tabelle mit Grundlegenden Informationen zu jeden Objekt
+CREATE SCHEMA data;
+
+CREATE TABLE data.meta (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    class_id UUID REFERENCES structure.class(id),
+    creator_id UUID REFERENCES permission.user(id),
+    created TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Objektzuweising zu einer Benutzergruppe: Kann aufgrund des Fremdschlüssels erst nach dem Definieren der Meta-Tabelle erzeugt werden
+CREATE TABLE permission.object_assignment (
+    object_id UUID REFERENCES data.meta(id),
+    group_id UUID REFERENCES permission.group(id),
+    PRIMARY KEY (object_id, group_id)
+);
+
+-- Root-Benutzer erstellen und User-ID zurückgeben
+INSERT INTO permission.user(name) VALUES ('root') RETURNING id; 
