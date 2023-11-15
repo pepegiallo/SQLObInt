@@ -61,9 +61,33 @@ CREATE TABLE permission.user_assignment (
     PRIMARY KEY (user_id, group_id)
 );
 
+CREATE TABLE permission.class_assignment (
+    class_id UUID REFERENCES structure.class(id),
+    group_id UUID REFERENCES permission.group(id),
+    "read" BOOLEAN NOT NULL,
+    write BOOLEAN NOT NULL,
+    "delete" BOOLEAN NOT NULL,
+    administration BOOLEAN NOT NULL,
+    PRIMARY KEY (class_id, group_id)
+);
+
+CREATE TABLE permission.attribute_assignment (
+    attribute_id UUID REFERENCES structure.attribute(id),
+    group_id UUID REFERENCES permission.group(id),
+    "read" BOOLEAN NOT NULL,
+    write BOOLEAN NOT NULL,
+    "delete" BOOLEAN NOT NULL,
+    administration BOOLEAN NOT NULL,
+    PRIMARY KEY (attribute_id, group_id)
+);
+
 CREATE TABLE permission.association_assignment (
     association_id UUID REFERENCES structure.association(id),
     group_id UUID REFERENCES permission.group(id),
+    "read" BOOLEAN NOT NULL,
+    write BOOLEAN NOT NULL,
+    "delete" BOOLEAN NOT NULL,
+    administration BOOLEAN NOT NULL,
     PRIMARY KEY (association_id, group_id)
 );
 
@@ -84,6 +108,10 @@ CREATE TABLE data.meta (
 CREATE TABLE permission.object_assignment (
     object_id UUID REFERENCES data.meta(id),
     group_id UUID REFERENCES permission.group(id),
+    "read" BOOLEAN NOT NULL,
+    write BOOLEAN NOT NULL,
+    "delete" BOOLEAN NOT NULL,
+    administration BOOLEAN NOT NULL,
     PRIMARY KEY (object_id, group_id)
 );
 

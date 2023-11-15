@@ -311,12 +311,24 @@ class UserInterface:
         cursor = self.get_connection().cursor()
         cursor.execute('INSERT INTO permission.user_assignment (user_id, group_id) VALUES (%s, %s)', (user.id, group.id))
 
-    def assign_object_to_group(self, object: Object, group: Group):
+    def assign_class_to_group(self, class_: Class, group: Group, read: bool = False, write: bool = False, delete: bool = False, administration: bool = False):
+        """ Weist die übergeben Klasse der übergebenen Benutzergruppe zu """
+        cursor = self.get_connection().cursor()
+        cursor.execute('INSERT INTO permission.class_assignment (class_id, group_id, "read", write, "delete", administration) VALUES (%s, %s, %s, %s, %s, %s)', (class_.id, group.id, read, write, delete, administration))
+
+    def assign_object_to_group(self, object: Object, group: Group, read: bool = False, write: bool = False, delete: bool = False, administration: bool = False):
         """ Weist das übergebene Object der übergebenen Benutzergruppe zu """
         cursor = self.get_connection().cursor()
-        cursor.execute('INSERT INTO permission.object_assignment (object_id, group_id) VALUES (%s, %s)', (object.id, group.id))
+        cursor.execute('INSERT INTO permission.object_assignment (object_id, group_id, "read", write, "delete", administration) VALUES (%s, %s, %s, %s, %s, %s)', (object.id, group.id, read, write, delete, administration))
 
-    def assign_association_to_group(self, association: Association, group: Group):
+    def assign_attribute_to_group(self, attribute: Attribute, group: Group, read: bool = False, write: bool = False, delete: bool = False, administration: bool = False):
+        """ Weist das übergebene Attribut der übergebenen Benutzergruppe zu """
+        cursor = self.get_connection().cursor()
+        cursor.execute('INSERT INTO permission.attribute_assignment (attribute_id, group_id, "read", write, "delete", administration) VALUES (%s, %s, %s, %s, %s, %s)', (attribute.id, group.id, read, write, delete, administration))
+
+    def assign_association_to_group(self, association: Association, group: Group, read: bool = False, write: bool = False, delete: bool = False, administration: bool = False):
         """ Weist die übergeben Assoziation der übergebenen Benutzergruppe zu """
         cursor = self.get_connection().cursor()
-        cursor.execute('INSERT INTO permission.association_assignment (association_id, group_id) VALUES (%s, %s)', (association.id, group.id))
+        cursor.execute('INSERT INTO permission.association_assignment (association_id, group_id, "read", write, "delete", administration) VALUES (%s, %s, %s, %s, %s, %s)', (association.id, group.id, read, write, delete, administration))
+
+    

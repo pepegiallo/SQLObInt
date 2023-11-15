@@ -91,8 +91,10 @@ def setup_groups(interface: UserInterface, obj):
     root = interface.create_group('public')
     admin = interface.create_group('admin', root)
     admin.assign_user(interface.user)
-    admin.assign_object(obj)
-    admin.assign_association(interface.get_association_by_name('person_to_address'))
+    admin.assign_class(interface.get_class_by_name('address'), read=True)
+    admin.assign_object(obj, read=True, write=True, delete=True)
+    admin.assign_attribute(interface.get_attribute_by_name('birthday'), read=True, write=True)
+    admin.assign_association(interface.get_association_by_name('person_to_address'), read=True, write=True)
 
 
 if __name__ == '__main__':
