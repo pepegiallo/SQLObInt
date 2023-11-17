@@ -124,10 +124,6 @@ class Group:
         """ Weist das übergebene Object der Benutzergruppe zu """
         self.interface.assign_object_to_group(object, self, read, write, delete, administration)
 
-    def assign_attribute(self, attribute: Attribute, read: bool = False, write: bool = False, delete: bool = False, administration: bool = False):
-        """ Weist das übergebene Attribut der Benutzergruppe zu """
-        self.interface.assign_attribute_to_group(attribute, self, read, write, delete, administration)
-
     def assign_association(self, association: Association, read: bool = False, write: bool = False, delete: bool = False, administration: bool = False):
         """ Weist die übergeben Assoziation der Benutzergruppe zu """
         self.interface.assign_association_to_group(association, self, read, write, delete, administration)

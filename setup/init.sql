@@ -71,16 +71,6 @@ CREATE TABLE permission.class_assignment (
     PRIMARY KEY (class_id, group_id)
 );
 
-CREATE TABLE permission.attribute_assignment (
-    attribute_id UUID REFERENCES structure.attribute(id),
-    group_id UUID REFERENCES permission.group(id),
-    "read" BOOLEAN NOT NULL,
-    write BOOLEAN NOT NULL,
-    "delete" BOOLEAN NOT NULL,
-    administration BOOLEAN NOT NULL,
-    PRIMARY KEY (attribute_id, group_id)
-);
-
 CREATE TABLE permission.association_assignment (
     association_id UUID REFERENCES structure.association(id),
     group_id UUID REFERENCES permission.group(id),
