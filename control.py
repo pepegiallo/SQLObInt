@@ -68,14 +68,14 @@ class AttributeAssignment:
         """ Gibt Attributobjekt zurück """
         return self.interface.get_attribute_by_id(self.attribute_id)
 
-class Association:
+class Reference:
     def __init__(self, interface, id: str, name: str, origin_class_id: str, target_class_id: str) -> None:
         self.interface = interface
         self.id = id
         self.name = name
         self.origin_class_id = origin_class_id
         self.target_class_id = target_class_id
-        interface.structure_cache.store_association(self)
+        interface.structure_cache.store_reference(self)
 
     def get_origin_class(self):
         """ Gibt Klassenobjekt der Ursprungsklasse zurück """
@@ -112,9 +112,9 @@ class Group:
         self.name = name
         self.parent_id = parent_id
 
-    def assign_user(self, user: User):
+    def add_user(self, user: User):
         """ Weist den übergebenen Benutzer der Benutzergruppe zu """
-        self.interface.assign_user_to_group(user, self)
+        self.interface.add_user_to_group(user, self)
 
     def assign_class(self, class_: Class, read: bool = False, write: bool = False, delete: bool = False, administration: bool = False):
         """ Weist das übergebene Klasse der Benutzergruppe zu """
@@ -124,6 +124,6 @@ class Group:
         """ Weist das übergebene Object der Benutzergruppe zu """
         self.interface.assign_object_to_group(object, self, read, write, delete, administration)
 
-    def assign_association(self, association: Association, read: bool = False, write: bool = False, delete: bool = False, administration: bool = False):
+    def assign_reference(self, reference: Reference, read: bool = False, write: bool = False, delete: bool = False, administration: bool = False):
         """ Weist die übergeben Assoziation der Benutzergruppe zu """
-        self.interface.assign_association_to_group(association, self, read, write, delete, administration)
+        self.interface.assign_reference_to_group(reference, self, read, write, delete, administration)

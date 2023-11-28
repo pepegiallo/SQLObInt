@@ -1,4 +1,4 @@
-from control import Class, Attribute, Association, Object
+from control import Class, Attribute, Reference, Object, Group
 
 class DictCache:
     def __init__(self, *atts):
@@ -34,7 +34,7 @@ class StructureCache:
     def __init__(self) -> None:
         self.class_cache = DictCache('id', 'name')
         self.attribute_cache = DictCache('id', 'name')
-        self.association_cache = DictCache('id', 'name')
+        self.reference_cache = DictCache('id', 'name')
 
     def store_class(self, class_: Class) -> None:
         """ Fügt ein Klassenobjekt hinzu """
@@ -60,17 +60,17 @@ class StructureCache:
         """ Gibt anhand 'id' oder 'name' zurück, ob das Attribut im Cache vorhanden ist """
         return self.attribute_cache.contains(attr, value)
 
-    def store_association(self, association: Association) -> None:
-        """ Fügt ein Assoziationsobjekt hinzu """
-        self.association_cache.store(association)
+    def store_reference(self, reference: Reference) -> None:
+        """ Fügt ein Referenzobjekt hinzu """
+        self.reference_cache.store(reference)
 
-    def get_association(self, attr, value) -> Class:
-        """ Gibt ein Assoziationsobjekt anhand 'id' oder 'name' zurück """
-        return self.association_cache.get(attr, value)
+    def get_reference(self, attr, value) -> Class:
+        """ Gibt ein Referenzobjekt anhand 'id' oder 'name' zurück """
+        return self.reference_cache.get(attr, value)
 
-    def contains_association(self, attr, value) -> bool:
-        """ Gibt anhand 'id' oder 'name' zurück, ob die Assoziation im Cache vorhanden ist """
-        return self.association_cache.contains(attr, value)
+    def contains_reference(self, attr, value) -> bool:
+        """ Gibt anhand 'id' oder 'name' zurück, ob die Referenz im Cache vorhanden ist """
+        return self.reference_cache.contains(attr, value)
 
 class PermissionDefinition:
     def __init__(self, read: bool, write: bool, delete: bool, administration: bool) -> None:
@@ -81,9 +81,22 @@ class PermissionDefinition:
         
 class PermissionCache:
     def __init__(self) -> None:
+        self.group_cache = DictCache('id', 'name')
         self.class_cache = DictCache('id', 'name')
-        self.association_cache = DictCache('id', 'name')
+        self.reference_cache = DictCache('id', 'name')
         self.object_cache = DictCache('id')
+
+    def store_group(self, group: Group) -> None:
+        """ Fügt eine Benutzergruppe hinzu """
+        self.group_cache.store(group)
+
+    def get_group(self, attr, value) -> Group:
+        """ Gibt eine Benutzergruppe anhand 'id' oder 'name' zurück """
+        return self.group_cache.get(attr, value)
+
+    def contains_group(self, attr, value) -> bool:
+        """ Gibt anhand 'id' oder 'name' zurück, ob die Benutzergruppe im Cache vorhanden ist """
+        return self.group_cache.contains(attr, value)
 
     def store_class_permissions(self, class_: Class, read: bool, write: bool, delete: bool, administration: bool):
         """ Fügt die Berechtigungsdefinition einer Klasse hinzu """
@@ -101,21 +114,21 @@ class PermissionCache:
         """ Gibt anhand von 'id' oder 'name' zurück, ob die Berechtigungsdefinition der Klasse im Cache vorhanden ist """
         return self.class_cache.contains(attr, value)
     
-    def store_association_permissions(self, association: Association, read: bool, write: bool, delete: bool, administration: bool):
-        """ Fügt die Berechtigungsdefinition einer Assoziation hinzu """
-        self.association_cache.store_custom(
+    def store_reference_permissions(self, reference: Reference, read: bool, write: bool, delete: bool, administration: bool):
+        """ Fügt die Berechtigungsdefinition einer Referenz hinzu """
+        self.reference_cache.store_custom(
             PermissionDefinition(read, write, delete, administration),
-            id=association.id,
-            name=association.name
+            id=reference.id,
+            name=reference.name
         )
     
-    def get_association_permissions(self, attr, value) -> PermissionDefinition:
-        """ Gibt die Berechtigungsdefinition einer Assoziation anhand von 'id' oder 'name' zurück """
-        return self.association_cache.get(attr, value)
+    def get_reference_permissions(self, attr, value) -> PermissionDefinition:
+        """ Gibt die Berechtigungsdefinition einer Referenz anhand von 'id' oder 'name' zurück """
+        return self.reference_cache.get(attr, value)
 
-    def contains_association_permissions(self, attr, value) -> bool:
-        """ Gibt anhand von 'id' oder 'name' zurück, ob die Berechtigungsdefinition der Assoziation im Cache vorhanden ist """
-        return self.association_cache.contains(attr, value)
+    def contains_reference_permissions(self, attr, value) -> bool:
+        """ Gibt anhand von 'id' oder 'name' zurück, ob die Berechtigungsdefinition der Referenz im Cache vorhanden ist """
+        return self.reference_cache.contains(attr, value)
     
     def store_object_permissions(self, object: Object, read: bool, write: bool, delete: bool, administration: bool):
         """ Fügt die Berechtigungsdefinition eine Objekts hinzu """

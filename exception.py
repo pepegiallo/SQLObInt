@@ -1,5 +1,5 @@
 class AttributeNotExists(NameError):
     pass
 
-class AssociationNotExists(NameError):
+class ReferenceNotExists(NameError):
     pass

@@ -27,14 +27,14 @@ CREATE TABLE structure.attribute_assignment (
     PRIMARY KEY (class_id, attribute_id)
 );
 
--- Assoziation: Verknüpfungen zwischen Objekten, Assoziationen können nur zwischen zwei definierten Objektklassen bestehen
-CREATE TABLE structure.association (
+-- Referenz: Verknüpfungen zwischen Objekten, Referenzen können nur zwischen zwei definierten Objektklassen bestehen
+CREATE TABLE structure.reference (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     name VARCHAR(64) UNIQUE NOT NULL,
     origin_class_id UUID REFERENCES structure.class(id),
     target_class_id UUID REFERENCES structure.class(id)
 );
-CREATE INDEX association_name ON structure.association(name);
+CREATE INDEX reference_name ON structure.reference(name);
 
 -- Schema Berechtigungen: Enthält Tabellen zur Verwaltung von Benutzern und Berechtigungsgruppen
 CREATE SCHEMA permission;
@@ -71,18 +71,18 @@ CREATE TABLE permission.class_assignment (
     PRIMARY KEY (class_id, group_id)
 );
 
-CREATE TABLE permission.association_assignment (
-    association_id UUID REFERENCES structure.association(id),
+CREATE TABLE permission.reference_assignment (
+    reference_id UUID REFERENCES structure.reference(id),
     group_id UUID REFERENCES permission.group(id),
     "read" BOOLEAN NOT NULL,
     write BOOLEAN NOT NULL,
     "delete" BOOLEAN NOT NULL,
     administration BOOLEAN NOT NULL,
-    PRIMARY KEY (association_id, group_id)
+    PRIMARY KEY (reference_id, group_id)
 );
 
--- Schema Assoziationen: Enthält eine Tabelle für jede definierte Assoziation, in welcher die Verbindungen zwischen Objekten abgelegt sind
-CREATE SCHEMA association;
+-- Schema Referenzen: Enthält eine Tabelle für jede definierte Referenz, in welcher die Verbindungen zwischen Objekten abgelegt sind
+CREATE SCHEMA reference;
 
 -- Schema Daten: Enthält eine Tabelle für jede Objektklasse, in welcher die Daten abgelegt werden sowie eine Meta-Tabelle mit Grundlegenden Informationen zu jeden Objekt
 CREATE SCHEMA data;

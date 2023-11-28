@@ -9,7 +9,7 @@ sys.path.append(parent)
 # Imports
 import psycopg2
 from datetime import date, datetime
-from interface import UserInterface, setup_db
+from interface import UserInterface, setup_db, get_user_by_name
 import random
 from control import User
 import configparser
@@ -50,8 +50,8 @@ def setup_test(interface: UserInterface, seed=1902):
     c_person.update_view()
     c_address.update_view()
 
-    # Assoziationen
-    a_person_to_address = interface.create_association('person_to_address', c_person, c_address)
+    # Referenzen
+    a_person_to_address = interface.create_reference('person_to_address', c_person, c_address)
     
     # Testdaten einfügen
     with open('examples/data/sample_first_names.txt', 'r') as file:
@@ -88,28 +88,43 @@ def setup_test(interface: UserInterface, seed=1902):
     return obj
 
 def setup_groups(interface: UserInterface, obj):
-    root = interface.create_group('public')
+    root = interface.create_group('root')
     admin = interface.create_group('admin', root)
-    admin.assign_user(interface.user)
+    admin_lite = interface.create_group('admin_lite', admin)
+    c1 = interface.create_group('c1', root)
+    c2 = interface.create_group('c2', root)
+    c11 = interface.create_group('c11', c1)
+    c12 = interface.create_group('c12', c1)
+
+    admin.add_user(interface.user)
     admin.assign_class(interface.get_class_by_name('address'), read=True)
     admin.assign_object(obj, read=True, write=True, delete=True)
-    admin.assign_attribute(interface.get_attribute_by_name('birthday'), read=True, write=True)
-    admin.assign_association(interface.get_association_by_name('person_to_address'), read=True, write=True)
+    #admin.assign_attribute(interface.get_attribute_by_name('birthday'), read=True, write=True)
+    admin.assign_reference(interface.get_reference_by_name('person_to_address'), read=True, write=True)
 
 
 if __name__ == '__main__':
     pool = get_connection_pool()
-    root_user = setup_db(pool.getconn())
-    interface = UserInterface(root_user, pool)
-    print('Database purged')
+    setup = False
     
-    # Set up test db
-    test_obj = setup_test(interface)
-    print('Test database built')
-    interface.commit()
-    interface.disconnect()
+    if setup:
+        root_user = setup_db(pool.getconn())
+        interface = UserInterface(root_user, pool)
+        print('Database purged')
+        
+        # Set up test db
+        test_obj = setup_test(interface)
+        print('Test database built')
+        interface.commit()
+        interface.disconnect()
 
-    # Benutzergruppen
-    setup_groups(interface, test_obj)
-    interface.commit()
-    print('Benutzergruppen erstellt')
+        # Benutzergruppen
+        setup_groups(interface, test_obj)
+        interface.commit()
+        print('Benutzergruppen erstellt')
+    else:
+        root_user = get_user_by_name(pool.getconn(), 'root')
+        interface = UserInterface(root_user, pool)
+
+    print('\n'.join([g.name for g in interface.get_users_classes_from_db(root_user)]))
+    print(root_user.id)

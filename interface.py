@@ -1,23 +1,29 @@
 import psycopg2
 import psycopg2.extras
 from psycopg2 import pool
-from control import Class, Attribute, Association, AttributeAssignment, Object, User, Group
+from control import Class, Attribute, Reference, AttributeAssignment, Object, User, Group
 from cache import StructureCache
 
 def setup_db(connection, filename_init_script: str = 'setup/init.sql'):
-        """ Leeren und initialisiert die Datenbank, gibt Root-Benutzer zurück """
-        cursor = connection.cursor()
-        cursor.execute("""
-        DROP SCHEMA IF EXISTS permission CASCADE; 
-        DROP SCHEMA IF EXISTS data CASCADE;
-        DROP SCHEMA IF EXISTS association CASCADE;
-        DROP SCHEMA IF EXISTS structure CASCADE;
-        """)
-        with open(filename_init_script, 'r') as file:
-            cursor.execute(file.read())
-        root_user_id = cursor.fetchone()[0]
-        connection.commit()
-        return User(root_user_id)
+    """ Leeren und initialisiert die Datenbank, gibt Root-Benutzer zurück """
+    cursor = connection.cursor()
+    cursor.execute("""
+    DROP SCHEMA IF EXISTS permission CASCADE; 
+    DROP SCHEMA IF EXISTS data CASCADE;
+    DROP SCHEMA IF EXISTS reference CASCADE;
+    DROP SCHEMA IF EXISTS structure CASCADE;
+    """)
+    with open(filename_init_script, 'r') as file:
+        cursor.execute(file.read())
+    root_user_id = cursor.fetchone()[0]
+    connection.commit()
+    return User(root_user_id)
+
+def get_user_by_name(connection, name: str) -> User:
+    """ Gibt ein Userobjekt anhand der Namens zurück """
+    cursor = connection.cursor()
+    cursor.execute('SELECT id FROM permission.user WHERE name = %s', (name,))
+    return User(cursor.fetchone()[0])
 
 class UserInterface:
     def __init__(self, user: User, connection_pool: pool.SimpleConnectionPool):
@@ -175,37 +181,37 @@ class UserInterface:
         """, (class_.id, attribute.id, nullable, default))
         return AttributeAssignment(self, class_.id, attribute.id, nullable, default)
 
-    ################################################## Assoziation ##################################################
-    def create_association(self, name: str, origin_class: Class, target_class: Class) -> Association:
-        """ Erstellt eine neue Assoziation und gibt Assoziationsobjekt zurück """
+    ################################################## Referenz ##################################################
+    def create_reference(self, name: str, origin_class: Class, target_class: Class) -> Reference:
+        """ Erstellt eine neue Referenz und gibt Referenzobjekt zurück """
         cursor = self.get_connection().cursor()
-        cursor.execute('INSERT INTO structure.association (name, origin_class_id, target_class_id) VALUES (%s, %s, %s) RETURNING id', (name, origin_class.id, target_class.id))
+        cursor.execute('INSERT INTO structure.reference (name, origin_class_id, target_class_id) VALUES (%s, %s, %s) RETURNING id', (name, origin_class.id, target_class.id))
         id = cursor.fetchone()[0]
         cursor.execute(f"""
-        CREATE TABLE association.{name} (
+        CREATE TABLE reference.{name} (
             origin_id UUID REFERENCES data.{origin_class.name},
             target_id UUID REFERENCES data.{target_class.name},
             PRIMARY KEY (origin_id, target_id)
         )
         """)
-        return Association(self, id, name, origin_class.id, target_class.id)
+        return Reference(self, id, name, origin_class.id, target_class.id)
 
-    def get_association_from_db_by_name(self, name: str) -> Association:
-        """ Gibt Assoziationsobjekt per Datenbankzugriff anhand dessen Name zurück """
+    def get_reference_from_db_by_name(self, name: str) -> Reference:
+        """ Gibt Referenzobjekt per Datenbankzugriff anhand dessen Name zurück """
         cursor = self.get_connection().cursor()
-        cursor.execute('SELECT id, origin_class_id, target_class_id FROM structure.association WHERE name = %s', (name,))
+        cursor.execute('SELECT id, origin_class_id, target_class_id FROM structure.reference WHERE name = %s', (name,))
         res = cursor.fetchone()
         if res:
-            return Association(self, res[0], name, res[1], res[2])
+            return Reference(self, res[0], name, res[1], res[2])
         else:
             return None
 
-    def get_association_by_name(self, name: str) -> Association:
-        """ Gibt Assoziationsobjekt anhand dessen Namen zurück """
-        association = self.structure_cache.get_association('name', name)
-        if not association:
-            association = self.get_association_from_db_by_name(name)
-        return association
+    def get_reference_by_name(self, name: str) -> Reference:
+        """ Gibt Referenzobjekt anhand dessen Namen zurück """
+        reference = self.structure_cache.get_reference('name', name)
+        if not reference:
+            reference = self.get_reference_from_db_by_name(name)
+        return reference
 
     ################################################## Objekt ##################################################
     def create_object(self, class_: Class, **attributes) -> Object:
@@ -265,38 +271,38 @@ class UserInterface:
         cursor = self.get_connection().cursor()
         cursor.execute('\n'.join(query), tuple(values))
 
-    def bind(self, origin: Object, target: Object, association: Association | str, rebind: bool = False):
-        """ Schafft eine Assoziation vom Ursprungs- zum Zielobjekt """
+    def bind(self, origin: Object, target: Object, reference: Reference | str, rebind: bool = False):
+        """ Schafft eine Referenz vom Ursprungs- zum Zielobjekt """
         cursor = self.get_connection().cursor()
-        association_name = association.name if type(association) is Association else association
+        reference_name = reference.name if type(reference) is Reference else reference
         if rebind:
-            cursor.execute(f'DELETE FROM association.{association_name} WHERE origin_id = %s', (origin.id,))
+            cursor.execute(f'DELETE FROM reference.{reference_name} WHERE origin_id = %s', (origin.id,))
         if target is not None:
-            cursor.execute(f'INSERT INTO association.{association_name} (origin_id, target_id) VALUES (%s, %s)', (origin.id, target.id))
+            cursor.execute(f'INSERT INTO reference.{reference_name} (origin_id, target_id) VALUES (%s, %s)', (origin.id, target.id))
 
-    def unbind(self, origin: Object, target: Object, association: Association | str):
-        """ Löscht eine bestehende Assoziation vom Ursprungs- zum Zielobjekt """
+    def unbind(self, origin: Object, target: Object, reference: Reference | str):
+        """ Löscht eine bestehende Referenz vom Ursprungs- zum Zielobjekt """
         cursor = self.get_connection().cursor()
-        association_name = association.name if type(association) is Association else association
-        cursor.execute(f'DELETE FROM association.{association_name} WHERE origin_id = %s AND target_id = %s', (origin.id, target.id))
+        reference_name = reference.name if type(reference) is Reference else reference
+        cursor.execute(f'DELETE FROM reference.{reference_name} WHERE origin_id = %s AND target_id = %s', (origin.id, target.id))
 
-    def hop(self, object_: Object, association: Association | str) -> list:
-        """ Gibt die mit dem übergebenen Objekte über die übergebene Assoziation verbundenen Objekte zurück """
+    def hop(self, object_: Object, reference: Reference | str) -> list:
+        """ Gibt die mit dem übergebenen Objekte über die übergebene Referenz verbundenen Objekte zurück """
         cursor = self.get_connection().cursor()
-        if type(association) is str:
-            association = self.get_association_by_name(association)
-        cursor.execute(f'SELECT target_id FROM association.{association.name} WHERE origin_id = %s', (object_.id,))
-        return [self.get_object(row[0], association.get_target_class()) for row in cursor.fetchall()]
+        if type(reference) is str:
+            reference = self.get_reference_by_name(reference)
+        cursor.execute(f'SELECT target_id FROM reference.{reference.name} WHERE origin_id = %s', (object_.id,))
+        return [self.get_object(row[0], reference.get_target_class()) for row in cursor.fetchall()]
 
-    def hop1(self, object_: Object, association: Association | str) -> Object:
-        """ Gibt das erste mit dem übergebenen Objekte über die übergebene Assoziation verbundene Objekt zurück """
+    def hop1(self, object_: Object, reference: Reference | str) -> Object:
+        """ Gibt das erste mit dem übergebenen Objekte über die übergebene Referenz verbundene Objekt zurück """
         cursor = self.get_connection().cursor()
-        if type(association) is str:
-            association = self.get_association_by_name(association)
-        cursor.execute(f'SELECT target_id FROM association.{association.name} WHERE origin_id = %s', (object_.id,))
-        return self.get_object(cursor.fetchone()[0], association.get_target_class())
+        if type(reference) is str:
+            reference = self.get_reference_by_name(reference)
+        cursor.execute(f'SELECT target_id FROM reference.{reference.name} WHERE origin_id = %s', (object_.id,))
+        return self.get_object(cursor.fetchone()[0], reference.get_target_class())
 
-    ################################################## Berechtigung ##################################################
+    ################################################## Berechtigungen ##################################################
     def create_group(self, name: str, parent: Group = None) -> Group:
         """ Erstellt eine neue Benutzergruppe mit dem übergebenen Namen und gibt ein Group-Objekt zurück """
         cursor = self.get_connection().cursor()
@@ -306,7 +312,7 @@ class UserInterface:
             cursor.execute('INSERT INTO permission.group (name) VALUES (%s) RETURNING id', (name,))
         return Group(self, cursor.fetchone()[0], name, parent.id if parent else None)
         
-    def assign_user_to_group(self, user: User, group: Group):
+    def add_user_to_group(self, user: User, group: Group):
         """ Weist den übergebenen Benutzer der übergebenen Benutzergruppe zu """
         cursor = self.get_connection().cursor()
         cursor.execute('INSERT INTO permission.user_assignment (user_id, group_id) VALUES (%s, %s)', (user.id, group.id))
@@ -321,7 +327,46 @@ class UserInterface:
         cursor = self.get_connection().cursor()
         cursor.execute('INSERT INTO permission.object_assignment (object_id, group_id, "read", write, "delete", administration) VALUES (%s, %s, %s, %s, %s, %s)', (object.id, group.id, read, write, delete, administration))
 
-    def assign_association_to_group(self, association: Association, group: Group, read: bool = False, write: bool = False, delete: bool = False, administration: bool = False):
-        """ Weist die übergeben Assoziation der übergebenen Benutzergruppe zu """
+    def assign_reference_to_group(self, reference: Reference, group: Group, read: bool = False, write: bool = False, delete: bool = False, administration: bool = False):
+        """ Weist die übergeben Referenz der übergebenen Benutzergruppe zu """
         cursor = self.get_connection().cursor()
-        cursor.execute('INSERT INTO permission.association_assignment (association_id, group_id, "read", write, "delete", administration) VALUES (%s, %s, %s, %s, %s, %s)', (association.id, group.id, read, write, delete, administration))
+        cursor.execute('INSERT INTO permission.reference_assignment (reference_id, group_id, "read", write, "delete", administration) VALUES (%s, %s, %s, %s, %s, %s)', (reference.id, group.id, read, write, delete, administration))
+
+    def get_users_groups_from_db(self, user: User):
+        """ Gibt die dem Benutzer zugewiesenen Gruppen sowie die untergeordneten Gruppen mittels Datenbankabfrage zurück """
+        cursor = self.get_connection().cursor()
+        cursor.execute("""
+        WITH RECURSIVE c AS (
+            SELECT g.id, g.name, g.parent_id FROM permission.user_assignment as ua
+            JOIN permission.group as g ON g.id = ua.group_id
+            WHERE ua.user_id = %s
+            UNION ALL
+            SELECT g.id, g.name, g.parent_id
+            FROM permission.group AS g
+            JOIN c ON c.id = g.parent_id
+        )
+        SELECT * FROM c;
+        """, (user.id,))
+        groups = []
+        for row in cursor.fetchall():
+            groups.append(Group(self, row[0], row[1], row[2]))
+        return groups
+    
+    def get_users_classes_from_db(self, user: User):
+        """ Gibt die dem Benutzer über Gruppen zugewiesenen Objektklassen zurück """
+        cursor = self.get_connection().cursor()
+        cursor.execute("""
+        WITH RECURSIVE c AS (
+            SELECT g.id FROM permission.user_assignment as ua
+            JOIN permission.group as g ON g.id = ua.group_id
+            WHERE ua.user_id = %s
+            UNION ALL
+            SELECT g.id
+            FROM permission.group AS g
+            JOIN c ON c.id = g.parent_id
+        )               
+        SELECT * FROM permission.class_assignment WHERE group_id IN (SELECT id FROM c)
+        """, (user.id,))
+        classes = []
+        for row in cursor.fetchall():
+            print(*row)
